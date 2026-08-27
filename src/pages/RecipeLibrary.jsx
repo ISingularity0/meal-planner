@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { listRecipes, deleteTagEverywhere } from '../lib/recipes.js'
+import OverflowMenu from '../components/OverflowMenu.jsx'
+import PlusIcon from '../components/PlusIcon.jsx'
 
-const listVariants = {
-  animate: { transition: { staggerChildren: 0.05 } },
-}
-
-const itemVariants = {
-  initial: { opacity: 0, y: 14 },
-  animate: { opacity: 1, y: 0 },
-}
+const gridVariants = { animate: { transition: { staggerChildren: 0.04 } } }
+const cardVariants = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export default function RecipeLibrary() {
+  const navigate = useNavigate()
   const [recipes, setRecipes] = useState([])
   const [query, setQuery] = useState('')
   const [activeTags, setActiveTags] = useState([])
@@ -50,98 +47,113 @@ export default function RecipeLibrary() {
   }
 
   const filtered = recipes.filter((r) => {
-    const matchesQuery = r.title.toLowerCase().includes(query.toLowerCase())
+    const q = query.toLowerCase()
+    const matchesQuery =
+      r.title.toLowerCase().includes(q) ||
+      (r.ingredients ?? []).some((ing) => (ing.name ?? '').toLowerCase().includes(q))
     const matchesTags = activeTags.length === 0 || activeTags.some((tag) => r.tags?.includes(tag))
     return matchesQuery && matchesTags
   })
 
   return (
     <div className="page">
-      <h1>Rezepte</h1>
+      <div className="page-head">
+        <h1>Rezepte</h1>
+        {allTags.length > 0 && (
+          <OverflowMenu
+            items={[
+              {
+                label: managingTags ? 'Tags fertig bearbeiten' : 'Tags verwalten',
+                onSelect: () => setManagingTags((v) => !v),
+              },
+            ]}
+          />
+        )}
+      </div>
+
       {error && <p role="alert">{error}</p>}
-      <input
-        className="search-input"
-        type="search"
-        placeholder="Rezepte durchsuchen…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+
+      <div className="glass search-field">
+        <SearchIcon />
+        <input
+          type="search"
+          placeholder="Suchen — Titel oder Zutat"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
 
       {allTags.length > 0 && (
-        <>
-          <div className="tag-row" style={{ marginBottom: '0.5rem' }}>
-            {allTags.map((tag) =>
-              managingTags ? (
-                <span key={tag} className="tag-toggle tag-manage">
-                  {tag}
-                  <button
-                    type="button"
-                    className="tag-delete"
-                    onClick={() => handleDeleteTag(tag)}
-                    aria-label={`Tag ${tag} löschen`}
-                  >
-                    ✕
-                  </button>
-                </span>
-              ) : (
+        <div className="tag-row" style={{ marginBottom: 14 }}>
+          {allTags.map((tag) =>
+            managingTags ? (
+              <span key={tag} className="tag-toggle tag-manage">
+                {tag}
                 <button
-                  key={tag}
-                  type="button"
-                  className={activeTags.includes(tag) ? 'tag-toggle active' : 'tag-toggle'}
-                  onClick={() => toggleTagFilter(tag)}
+                  className="tag-delete"
+                  onClick={() => handleDeleteTag(tag)}
+                  aria-label={`Tag ${tag} löschen`}
                 >
-                  {tag}
+                  ✕
                 </button>
-              )
-            )}
-          </div>
-          <button
-            type="button"
-            className="tag-manage-toggle"
-            style={{ marginBottom: '1rem' }}
-            onClick={() => setManagingTags((v) => !v)}
-          >
-            {managingTags ? '✓ Fertig' : '🏷️ Tags verwalten'}
-          </button>
-        </>
+              </span>
+            ) : (
+              <button
+                key={tag}
+                className={activeTags.includes(tag) ? 'tag-toggle active' : 'tag-toggle'}
+                onClick={() => toggleTagFilter(tag)}
+              >
+                {tag}
+              </button>
+            )
+          )}
+        </div>
       )}
 
-      <Link to="/recipes/new" className="btn btn-primary btn-block" style={{ marginBottom: '1.25rem' }}>
-        + Rezept hinzufügen
-      </Link>
-      {loading && <p>Lädt…</p>}
-      <motion.ul className="recipe-list" variants={listVariants} initial="initial" animate="animate">
+      {loading && <p className="empty-state">Lädt…</p>}
+
+      <motion.div className="recipe-grid" variants={gridVariants} initial="initial" animate="animate">
         {filtered.map((r) => (
-          <motion.li key={r.id} variants={itemVariants} layout>
-            <Link to={`/recipes/${r.id}`} className="card recipe-card">
-              <div className="recipe-thumb">
-                {r.photo_url ? (
-                  <img src={r.photo_url} alt="" />
-                ) : (
-                  <span className="recipe-thumb-placeholder">🍽️</span>
-                )}
-              </div>
-              <div className="recipe-card-body">
+          <motion.div key={r.id} variants={cardVariants} layout>
+            <Link to={`/recipes/${r.id}`} className="glass recipe-card">
+              <span className="recipe-card-photo">
+                {r.photo_url ? <img src={r.photo_url} alt="" /> : '🍽️'}
+              </span>
+              <span className="recipe-card-body">
                 <span className="recipe-card-title">{r.title}</span>
-                {r.tags?.length > 0 && (
-                  <div className="tag-row">
-                    {r.tags.map((tag) => (
-                      <span key={tag} className="tag-pill">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                <span className="recipe-card-sub">
+                  {(r.ingredients ?? []).length} Zutaten
+                  {r.prep_minutes ? ` · ${r.prep_minutes} Min` : ''}
+                </span>
+              </span>
             </Link>
-          </motion.li>
+          </motion.div>
         ))}
-      </motion.ul>
+      </motion.div>
+
       {!loading && !error && filtered.length === 0 && (
         <p className="empty-state">
           {recipes.length === 0 ? 'Noch keine Rezepte.' : 'Keine Rezepte passen zu dieser Auswahl.'}
         </p>
       )}
+
+      <motion.button
+        className="fab"
+        whileTap={{ scale: 0.92 }}
+        onClick={() => navigate('/recipes/new')}
+        aria-label="Rezept hinzufügen"
+      >
+        <PlusIcon size={24} />
+      </motion.button>
     </div>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
   )
 }

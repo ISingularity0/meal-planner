@@ -23,14 +23,17 @@ Do these once, in order.
 - [ ] Open `supabase/migrations/0001_init.sql` **and** `0002_flexible_meal_entries.sql` and
       replace **every** `REPLACE_WITH_YOUR_FAMILY_EMAIL` with the email you'll use for the
       shared family login. Do this *before* running either migration. `0003_recipe_tags.sql`
-      and `0004_entry_servings.sql` have no placeholder — nothing to edit there.
+      `0004_entry_servings.sql` and `0005_recipe_prep_minutes.sql` have no placeholder —
+      nothing to edit there.
 - [ ] Run `0001_init.sql`, then `0002_flexible_meal_entries.sql`, then `0003_recipe_tags.sql`,
-      then `0004_entry_servings.sql`, in the Supabase dashboard → SQL Editor, in that order.
+      then `0004_entry_servings.sql`, then `0005_recipe_prep_minutes.sql`, in the Supabase
+      dashboard → SQL Editor, in that order.
       Expected after 0001: `recipes`, `meal_slots`, `shopping_list_items` tables + a
       `recipe-photos` Storage bucket. Expected after 0002: `meal_slots` is replaced by
       `meal_entries` (an open list of recipes per day, not fixed meal slots). Expected after
       0003: `recipes` gets a `tags` column. Expected after 0004: `meal_entries` gets a
-      `servings` column (a per-day multiplier for scaling ingredient amounts).
+      `servings` column (a per-day multiplier for scaling ingredient amounts). Expected after
+      0005: `recipes` gets an optional `prep_minutes` column.
 - [ ] Authentication → Users → Add user: create the one shared family account, using the exact
       same email you put in the SQL.
 - [ ] Authentication → Settings: disable **"Enable email confirmations"** so that account can

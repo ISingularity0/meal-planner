@@ -1,29 +1,31 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  listItems,
-  generateFromRange,
-  toggleChecked,
-  deleteItem,
-  clearList,
-} from '../lib/shoppingList.js'
-import { toLocalISODate } from '../lib/dates.js'
+import { listItems, generateFromRange, toggleChecked, deleteItem, clearList } from '../lib/shoppingList.js'
+import { toLocalISODate, startOfWeek, addDays } from '../lib/dates.js'
+import OverflowMenu from '../components/OverflowMenu.jsx'
 
-function todayISO() {
-  return toLocalISODate(new Date())
+function currentWeekRange() {
+  const start = startOfWeek(new Date())
+  return { start: toLocalISODate(start), end: toLocalISODate(addDays(start, 6)) }
 }
 
-function weekAheadISO() {
-  const d = new Date()
-  d.setDate(d.getDate() + 6)
-  return toLocalISODate(d)
+function formatRangeLabel(startIso, endIso) {
+  const start = new Date(`${startIso}T00:00:00`)
+  const end = new Date(`${endIso}T00:00:00`)
+  const startMonth = start.toLocaleDateString('de-DE', { month: 'short' })
+  const endMonth = end.toLocaleDateString('de-DE', { month: 'short' })
+  if (startMonth === endMonth) return `${start.getDate()}.–${end.getDate()}. ${endMonth}`
+  return `${start.getDate()}. ${startMonth} – ${end.getDate()}. ${endMonth}`
 }
 
 export default function ShoppingList() {
+  const initialRange = currentWeekRange()
   const [items, setItems] = useState([])
-  const [startDate, setStartDate] = useState(todayISO())
-  const [endDate, setEndDate] = useState(weekAheadISO())
+  const [startDate, setStartDate] = useState(initialRange.start)
+  const [endDate, setEndDate] = useState(initialRange.end)
+  const [editingRange, setEditingRange] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [mealCount, setMealCount] = useState(null)
   const [error, setError] = useState(null)
   const [generateInfo, setGenerateInfo] = useState(null)
 
@@ -41,13 +43,14 @@ export default function ShoppingList() {
     setGenerateInfo(null)
     try {
       const { entriesFound, ingredientsAdded } = await generateFromRange(startDate, endDate)
+      setMealCount(entriesFound)
       await refresh()
       if (entriesFound === 0) {
         setGenerateInfo('Für diesen Zeitraum ist im Kalender nichts geplant.')
       } else if (ingredientsAdded === 0) {
-        setGenerateInfo('Die geplanten Rezepte in diesem Zeitraum haben noch keine Zutaten.')
+        setGenerateInfo('Die geplanten Rezepte haben noch keine Zutaten.')
       } else {
-        setGenerateInfo(`${ingredientsAdded} Zutat${ingredientsAdded === 1 ? '' : 'en'} hinzugefügt/aktualisiert.`)
+        setGenerateInfo(`${ingredientsAdded} Zutat${ingredientsAdded === 1 ? '' : 'en'} aktualisiert.`)
       }
     } catch (e) {
       setError(`Liste konnte nicht erstellt werden: ${e.message}`)
@@ -58,10 +61,11 @@ export default function ShoppingList() {
 
   async function handleToggle(item) {
     setError(null)
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, checked: !i.checked } : i)))
     try {
       await toggleChecked(item.id, !item.checked)
-      await refresh()
     } catch (e) {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, checked: item.checked } : i)))
       setError(`Eintrag konnte nicht aktualisiert werden: ${e.message}`)
     }
   }
@@ -87,31 +91,74 @@ export default function ShoppingList() {
     }
   }
 
-  const allChecked = items.length > 0 && items.every((item) => item.checked)
+  const doneCount = items.filter((i) => i.checked).length
+  const allChecked = items.length > 0 && doneCount === items.length
 
   return (
     <div className="page">
-      <h1>Einkaufsliste</h1>
+      <div className="page-head">
+        <h1>Einkauf</h1>
+        <span className="row" style={{ gap: 8 }}>
+          <span className="mono-label">
+            {items.length > 0 ? `${doneCount} / ${items.length} erledigt` : ''}
+          </span>
+          <OverflowMenu items={[{ label: 'Liste leeren', danger: true, onSelect: handleClear }]} />
+        </span>
+      </div>
+
       {error && <p role="alert">{error}</p>}
 
-      <div className="row date-range">
-        <label>
-          Von
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </label>
-        <label>
-          Bis
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </label>
+      {items.length > 0 && (
+        <div className="progress-track">
+          {items.map((item) => (
+            <span key={item.id} className={item.checked ? 'progress-seg done' : 'progress-seg'} />
+          ))}
+        </div>
+      )}
+
+      <div className="glass range-bar" onClick={() => setEditingRange((v) => !v)}>
+        <div>
+          <div className="range-title">
+            {startDate === initialRange.start && endDate === initialRange.end ? 'Diese Woche' : 'Zeitraum'}
+          </div>
+          <div className="range-meta">
+            {formatRangeLabel(startDate, endDate)}
+            {mealCount !== null ? ` · ${mealCount} Gerichte` : ''}
+          </div>
+        </div>
+        <motion.button
+          className="btn-primary"
+          whileTap={{ scale: 0.96 }}
+          disabled={generating}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleGenerate()
+          }}
+        >
+          {generating ? '…' : 'Aktualisieren'}
+        </motion.button>
       </div>
-      <motion.button
-        className="btn-primary btn-block"
-        onClick={handleGenerate}
-        disabled={generating}
-        whileTap={{ scale: 0.97 }}
-      >
-        {generating ? 'Erstellt…' : 'Für diesen Zeitraum erstellen'}
-      </motion.button>
+
+      <AnimatePresence>
+        {editingRange && (
+          <motion.div
+            className="glass range-edit"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <label>
+              Von
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label>
+              Bis
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {generateInfo && (
@@ -126,63 +173,63 @@ export default function ShoppingList() {
         )}
       </AnimatePresence>
 
+      {items.length > 0 ? (
+        <ul className="glass checklist" style={{ marginTop: 16 }}>
+          <AnimatePresence initial={false}>
+            {items.map((item) => (
+              <motion.li
+                key={item.id}
+                layout
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.18 }}
+                onClick={() => handleToggle(item)}
+              >
+                <motion.span
+                  className={item.checked ? 'check-box checked' : 'check-box'}
+                  animate={{ scale: item.checked ? [1, 1.18, 1] : 1 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {item.checked ? '✓' : ''}
+                </motion.span>
+                {[item.quantity, item.unit].filter(Boolean).length > 0 && (
+                  <span className="check-amount">
+                    {[item.quantity, item.unit].filter(Boolean).join(' ')}
+                  </span>
+                )}
+                <span className={item.checked ? 'check-name checked' : 'check-name'}>{item.name}</span>
+                <button
+                  className="btn-ghost"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(item.id)
+                  }}
+                  aria-label="Entfernen"
+                >
+                  ✕
+                </button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
+      ) : (
+        <p className="empty-state" style={{ marginTop: 16 }}>Liste ist leer.</p>
+      )}
+
       <AnimatePresence>
         {allChecked && (
           <motion.p
             className="celebration"
-            initial={{ opacity: 0, scale: 0.8, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
             transition={{ type: 'spring', stiffness: 300, damping: 18 }}
           >
             🎉 Alles erledigt!
           </motion.p>
         )}
       </AnimatePresence>
-
-      {items.length > 0 ? (
-        <ul className="card checklist" style={{ marginTop: '1.25rem' }}>
-          <AnimatePresence initial={false}>
-            {items.map((item) => (
-              <motion.li
-                key={item.id}
-                layout
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 12 }}
-                transition={{ duration: 0.18 }}
-              >
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    onChange={() => handleToggle(item)}
-                  />
-                  <motion.span
-                    className={item.checked ? 'item-name checked' : 'item-name'}
-                    animate={{ scale: item.checked ? [1, 1.08, 1] : 1 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    {[item.quantity, item.unit, item.name].filter(Boolean).join(' ')}
-                  </motion.span>
-                </label>
-                <button className="btn-ghost" onClick={() => handleDelete(item.id)}>✕</button>
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </ul>
-      ) : (
-        <p className="empty-state" style={{ marginTop: '1.25rem' }}>Liste ist leer.</p>
-      )}
-
-      <motion.button
-        className="btn-danger btn-block"
-        onClick={handleClear}
-        whileTap={{ scale: 0.97 }}
-        style={{ marginTop: '1rem' }}
-      >
-        Liste leeren
-      </motion.button>
     </div>
   )
 }

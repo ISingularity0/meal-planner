@@ -46,19 +46,26 @@ async function uploadPhoto(photoFile) {
   return data.publicUrl
 }
 
-export async function createRecipe({ title, ingredients, steps, photoFile, tags }) {
+export async function createRecipe({ title, ingredients, steps, photoFile, tags, prepMinutes }) {
   const photo_url = photoFile ? await uploadPhoto(photoFile) : null
   const { data, error } = await supabase
     .from('recipes')
-    .insert({ title, ingredients, steps, photo_url, tags: tags ?? [] })
+    .insert({
+      title,
+      ingredients,
+      steps,
+      photo_url,
+      tags: tags ?? [],
+      prep_minutes: prepMinutes || null,
+    })
     .select()
     .single()
   if (error) throw error
   return data
 }
 
-export async function updateRecipe(id, { title, ingredients, steps, photoFile, tags }) {
-  const update = { title, ingredients, steps, tags: tags ?? [] }
+export async function updateRecipe(id, { title, ingredients, steps, photoFile, tags, prepMinutes }) {
+  const update = { title, ingredients, steps, tags: tags ?? [], prep_minutes: prepMinutes || null }
   if (photoFile) {
     update.photo_url = await uploadPhoto(photoFile)
   }

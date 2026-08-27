@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
 import RequireAuth from './auth/RequireAuth.jsx'
@@ -14,7 +14,7 @@ import PageTransition from './components/PageTransition.jsx'
 const NAV_ITEMS = [
   { to: '/calendar', label: 'Kalender' },
   { to: '/recipes', label: 'Rezepte' },
-  { to: '/shopping-list', label: 'Einkaufsliste' },
+  { to: '/shopping-list', label: 'Einkauf' },
 ]
 
 // Position in the app's logical left-to-right order, used to pick a slide direction.
@@ -30,7 +30,7 @@ function routeOrder(pathname) {
 
 function BottomNav() {
   return (
-    <nav className="nav">
+    <nav className="glass glass-strong nav">
       {NAV_ITEMS.map((item) => (
         <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           {({ isActive }) => (
@@ -54,6 +54,7 @@ function BottomNav() {
 
 function AnimatedRoutes() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { session } = useAuth()
 
   const order = routeOrder(location.pathname)
@@ -70,11 +71,33 @@ function AnimatedRoutes() {
     mainRef.current?.scrollTo(0, 0)
   }, [location.pathname])
 
+  // Horizontal swipe switches tabs, but only when the gesture didn't start on something
+  // that owns a swipe of its own (week strip, entry cards).
+  const swipeBlocked = useRef(false)
+  const tabIndex = NAV_ITEMS.findIndex((item) => item.to === location.pathname)
+
+  function handlePanStart(event) {
+    swipeBlocked.current = Boolean(event.target?.closest?.('[data-no-tab-swipe]'))
+  }
+
+  function handlePanEnd(_, info) {
+    if (swipeBlocked.current || tabIndex === -1) return
+    const { x, y } = info.offset
+    if (Math.abs(x) < 70 || Math.abs(x) < Math.abs(y) * 1.5) return
+    const next = tabIndex + (x < 0 ? 1 : -1)
+    if (next >= 0 && next < NAV_ITEMS.length) navigate(NAV_ITEMS[next].to)
+  }
+
   const showNav = Boolean(session) && location.pathname !== '/login'
 
   return (
     <div className="app-shell">
-      <main className="app-main" ref={mainRef}>
+      <motion.main
+        className="app-main"
+        ref={mainRef}
+        onPanStart={handlePanStart}
+        onPanEnd={handlePanEnd}
+      >
         <AnimatePresence mode="wait" custom={direction}>
           <PageTransition key={location.pathname} direction={direction}>
             <Routes location={location}>
@@ -132,7 +155,7 @@ function AnimatedRoutes() {
             </Routes>
           </PageTransition>
         </AnimatePresence>
-      </main>
+      </motion.main>
       {showNav && <BottomNav />}
     </div>
   )

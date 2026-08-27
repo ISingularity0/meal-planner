@@ -15,6 +15,7 @@ export default function RecipeForm() {
   const [ingredients, setIngredients] = useState([{ ...emptyIngredient, key: 0 }])
   const [nextKey, setNextKey] = useState(1)
   const [steps, setSteps] = useState('')
+  const [prepMinutes, setPrepMinutes] = useState('')
   const [tags, setTags] = useState([])
   const [allTags, setAllTags] = useState([])
   const [newTag, setNewTag] = useState('')
@@ -39,6 +40,7 @@ export default function RecipeForm() {
         setIngredients(loaded.map((ing, i) => ({ ...ing, key: i })))
         setNextKey(loaded.length)
         setSteps(r.steps)
+        setPrepMinutes(r.prep_minutes ?? '')
         setTags(r.tags ?? [])
         setExistingPhotoUrl(r.photo_url)
       })
@@ -98,9 +100,18 @@ export default function RecipeForm() {
       const cleanIngredients = ingredients
         .filter((ing) => ing.name.trim() !== '')
         .map(({ name, quantity, unit }) => ({ name, quantity, unit }))
-      const payload = { title, ingredients: cleanIngredients, steps, tags, photoFile }
+      const payload = {
+        title,
+        ingredients: cleanIngredients,
+        steps,
+        tags,
+        photoFile,
+        prepMinutes: prepMinutes === '' ? null : Number(prepMinutes),
+      }
       const saved = isEdit ? await updateRecipe(id, payload) : await createRecipe(payload)
-      navigate(`/recipes/${saved.id}`)
+      // replace: the form must not stay in history, otherwise "back" from the detail
+      // screen lands on the form you just submitted instead of the recipe list.
+      navigate(`/recipes/${saved.id}`, { replace: true })
     } catch (e) {
       setError(`Rezept konnte nicht gespeichert werden: ${e.message}`)
     } finally {
@@ -112,13 +123,37 @@ export default function RecipeForm() {
 
   return (
     <div className="page">
-      <h1>{isEdit ? 'Rezept bearbeiten' : 'Neues Rezept'}</h1>
+      <div className="form-head">
+        <button
+          type="button"
+          className="glass icon-btn"
+          onClick={() => navigate(isEdit ? `/recipes/${id}` : '/recipes')}
+          aria-label="Zurück"
+        >
+          ‹
+        </button>
+        <h1>{isEdit ? 'Rezept bearbeiten' : 'Neues Rezept'}</h1>
+      </div>
       {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div className="field">
           <label>
             Titel
             <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </label>
+        </div>
+
+        <div className="field">
+          <label>
+            Zubereitungszeit in Minuten (optional)
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              placeholder="z. B. 30"
+              value={prepMinutes}
+              onChange={(e) => setPrepMinutes(e.target.value)}
+            />
           </label>
         </div>
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { getRecipe, deleteRecipe } from '../lib/recipes.js'
+import Stepper from '../components/Stepper.jsx'
+import OverflowMenu from '../components/OverflowMenu.jsx'
 
 function scaleQuantity(quantity, factor) {
   const num = Number(quantity)
@@ -14,9 +16,9 @@ export default function RecipeDetail() {
   const navigate = useNavigate()
   const location = useLocation()
   const [recipe, setRecipe] = useState(null)
+  const [portions, setPortions] = useState(location.state?.portions ?? 1)
+  const [tab, setTab] = useState('ingredients')
   const [error, setError] = useState(null)
-
-  const portions = location.state?.portions ?? null
 
   useEffect(() => {
     setError(null)
@@ -37,29 +39,48 @@ export default function RecipeDetail() {
   }
 
   if (error && !recipe) return <div className="page"><p role="alert">{error}</p></div>
-  if (!recipe) return <div className="page">Lädt…</div>
+  if (!recipe) return <div className="page"><p className="empty-state">Lädt…</p></div>
+
+  const stepLines = recipe.steps.split('\n').filter((line) => line.trim() !== '')
+  const meta = [
+    recipe.prep_minutes ? `${recipe.prep_minutes} Min` : null,
+    `${(recipe.ingredients ?? []).length} Zutaten`,
+    `${stepLines.length} Schritte`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <div className="page">
+      <div className="detail-head">
+        <button className="glass icon-btn" onClick={() => navigate('/recipes')} aria-label="Zurück">
+          ‹
+        </button>
+        <span className="detail-head-right">
+          <button
+            className="glass icon-btn"
+            onClick={() => navigate(`/recipes/${id}/edit`)}
+            aria-label="Bearbeiten"
+          >
+            ✎
+          </button>
+          <OverflowMenu items={[{ label: 'Rezept löschen', danger: true, onSelect: handleDelete }]} />
+        </span>
+      </div>
+
       {error && <p role="alert">{error}</p>}
 
-      {recipe.photo_url ? (
-        <motion.div
-          className="hero-photo"
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <img src={recipe.photo_url} alt="" />
-          <div className="hero-scrim" />
-          <h1 className="hero-title">{recipe.title}</h1>
-        </motion.div>
-      ) : (
-        <h1>{recipe.title}</h1>
-      )}
+      <motion.div
+        className="detail-photo"
+        initial={{ opacity: 0, scale: 1.03 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {recipe.photo_url ? <img src={recipe.photo_url} alt="" /> : '🍽️'}
+      </motion.div>
 
       {recipe.tags?.length > 0 && (
-        <div className="tag-row" style={{ marginBottom: '1rem' }}>
+        <div className="tag-row">
           {recipe.tags.map((tag) => (
             <span key={tag} className="tag-pill">
               {tag}
@@ -68,40 +89,69 @@ export default function RecipeDetail() {
         </div>
       )}
 
-      {portions && (
-        <p className="portions-note">
-          Für {portions} Portion{portions === 1 ? '' : 'en'} — Mengen angepasst
-        </p>
-      )}
+      <h1 className="detail-title">{recipe.title}</h1>
+      <div className="detail-meta">{meta}</div>
 
-      <h2>Zutaten</h2>
-      <ul className="ingredient-list">
-        {recipe.ingredients.map((ing, i) => (
-          <li key={i}>
-            <span className="ingredient-dot" />
-            {[scaleQuantity(ing.quantity, portions), ing.unit, ing.name].filter(Boolean).join(' ')}
-          </li>
-        ))}
-      </ul>
-
-      <h2>Zubereitung</h2>
-      <ol className="steps-list">
-        {recipe.steps
-          .split('\n')
-          .filter((line) => line.trim() !== '')
-          .map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-      </ol>
-
-      <div className="row detail-actions">
-        <Link to={`/recipes/${id}/edit`} className="btn btn-secondary-accent">
-          ✎ Bearbeiten
-        </Link>
-        <motion.button onClick={handleDelete} className="btn-danger" whileTap={{ scale: 0.96 }}>
-          🗑 Löschen
-        </motion.button>
+      <div className="glass portions-bar">
+        <span className="portions-label">Portionen</span>
+        <Stepper size="lg" value={portions} onChange={setPortions} />
       </div>
+
+      <div className="glass seg-tabs">
+        <button
+          className={tab === 'ingredients' ? 'seg-tab active' : 'seg-tab'}
+          onClick={() => setTab('ingredients')}
+        >
+          {tab === 'ingredients' && (
+            <motion.span layoutId="seg-pill" className="seg-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
+          )}
+          Zutaten
+        </button>
+        <button className={tab === 'steps' ? 'seg-tab active' : 'seg-tab'} onClick={() => setTab('steps')}>
+          {tab === 'steps' && (
+            <motion.span layoutId="seg-pill" className="seg-pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
+          )}
+          Zubereitung
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {tab === 'ingredients' ? (
+          <motion.ul
+            key="ingredients"
+            className="ingredient-list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {recipe.ingredients.map((ing, i) => (
+              <li key={i}>
+                <span className="ingredient-amount">
+                  {[scaleQuantity(ing.quantity, portions), ing.unit].filter(Boolean).join(' ')}
+                </span>
+                <span>{ing.name}</span>
+              </li>
+            ))}
+            {recipe.ingredients.length === 0 && <p className="empty-state">Keine Zutaten hinterlegt.</p>}
+          </motion.ul>
+        ) : (
+          <motion.ol
+            key="steps"
+            className="steps-list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {stepLines.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+            {stepLines.length === 0 && <p className="empty-state">Keine Zubereitung hinterlegt.</p>}
+          </motion.ol>
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }
