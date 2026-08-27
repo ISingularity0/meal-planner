@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Login from './pages/Login.jsx'
+import Calendar from './pages/Calendar.jsx'
 import RecipeLibrary from './pages/RecipeLibrary.jsx'
 import RecipeForm from './pages/RecipeForm.jsx'
 import RecipeDetail from './pages/RecipeDetail.jsx'
@@ -20,7 +21,7 @@ export default function App() {
             path="/calendar"
             element={
               <RequireAuth>
-                <Placeholder label="Calendar" />
+                <Calendar />
               </RequireAuth>
             }
           />
