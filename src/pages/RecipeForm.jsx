@@ -15,15 +15,18 @@ export default function RecipeForm() {
   const [photoFile, setPhotoFile] = useState(null)
   const [existingPhotoUrl, setExistingPhotoUrl] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!isEdit) return
-    getRecipe(id).then((r) => {
-      setTitle(r.title)
-      setIngredients(r.ingredients.length ? r.ingredients : [{ ...emptyIngredient }])
-      setSteps(r.steps)
-      setExistingPhotoUrl(r.photo_url)
-    })
+    getRecipe(id)
+      .then((r) => {
+        setTitle(r.title)
+        setIngredients(r.ingredients.length ? r.ingredients : [{ ...emptyIngredient }])
+        setSteps(r.steps)
+        setExistingPhotoUrl(r.photo_url)
+      })
+      .catch((e) => setError(`Could not load this recipe: ${e.message}`))
   }, [id, isEdit])
 
   function updateIngredient(index, field, value) {
@@ -43,16 +46,23 @@ export default function RecipeForm() {
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
-    const cleanIngredients = ingredients.filter((ing) => ing.name.trim() !== '')
-    const payload = { title, ingredients: cleanIngredients, steps, photoFile }
-    const saved = isEdit ? await updateRecipe(id, payload) : await createRecipe(payload)
-    setSaving(false)
-    navigate(`/recipes/${saved.id}`)
+    setError(null)
+    try {
+      const cleanIngredients = ingredients.filter((ing) => ing.name.trim() !== '')
+      const payload = { title, ingredients: cleanIngredients, steps, photoFile }
+      const saved = isEdit ? await updateRecipe(id, payload) : await createRecipe(payload)
+      navigate(`/recipes/${saved.id}`)
+    } catch (e) {
+      setError(`Could not save this recipe: ${e.message}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="page">
       <h1>{isEdit ? 'Edit recipe' : 'New recipe'}</h1>
+      {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
           <label>

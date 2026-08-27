@@ -25,6 +25,15 @@ button {
   padding-bottom: 5rem;
 }
 
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  background: #fff;
+  padding: 1rem;
+}
+
 .nav {
   position: fixed;
   bottom: 0;

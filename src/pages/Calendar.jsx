@@ -1,71 +1,63 @@
 import { useEffect, useState } from 'react'
 import { getWeekSlots, assignSlot, clearSlot } from '../lib/mealSlots.js'
 import { listRecipes } from '../lib/recipes.js'
+import { toLocalISODate as toISODate, startOfWeek, addDays } from '../lib/dates.js'
 
 const SLOTS = ['breakfast', 'lunch', 'dinner']
-
-function startOfWeek(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = (day === 0 ? -6 : 1) - day // Monday as first day
-  d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function toISODate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function addDays(date, n) {
-  const d = new Date(date)
-  d.setDate(d.getDate() + n)
-  return d
-}
 
 export default function Calendar() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [slotsByKey, setSlotsByKey] = useState({})
   const [recipes, setRecipes] = useState([])
   const [pickerTarget, setPickerTarget] = useState(null) // { date, slot } | null
+  const [error, setError] = useState(null)
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const weekEnd = addDays(weekStart, 6)
 
   useEffect(() => {
-    listRecipes().then(setRecipes)
+    listRecipes()
+      .then(setRecipes)
+      .catch((e) => setError(`Could not load recipes: ${e.message}`))
   }, [])
 
   useEffect(() => {
-    getWeekSlots(toISODate(weekStart), toISODate(weekEnd)).then((slots) => {
-      const map = {}
-      for (const s of slots) map[`${s.date}_${s.slot}`] = s
-      setSlotsByKey(map)
-    })
+    setError(null)
+    getWeekSlots(toISODate(weekStart), toISODate(weekEnd))
+      .then((slots) => {
+        const map = {}
+        for (const s of slots) map[`${s.date}_${s.slot}`] = s
+        setSlotsByKey(map)
+      })
+      .catch((e) => setError(`Could not load this week: ${e.message}`))
   }, [weekStart])
 
   async function handlePick(recipeId) {
     const { date, slot } = pickerTarget
-    if (recipeId === null) {
-      await clearSlot(date, slot)
-      setSlotsByKey((prev) => {
-        const next = { ...prev }
-        delete next[`${date}_${slot}`]
-        return next
-      })
-    } else {
-      const saved = await assignSlot(date, slot, recipeId)
-      setSlotsByKey((prev) => ({ ...prev, [`${date}_${slot}`]: saved }))
+    setError(null)
+    try {
+      if (recipeId === null) {
+        await clearSlot(date, slot)
+        setSlotsByKey((prev) => {
+          const next = { ...prev }
+          delete next[`${date}_${slot}`]
+          return next
+        })
+      } else {
+        const saved = await assignSlot(date, slot, recipeId)
+        setSlotsByKey((prev) => ({ ...prev, [`${date}_${slot}`]: saved }))
+      }
+    } catch (e) {
+      setError(`Could not save that meal: ${e.message}`)
+    } finally {
+      setPickerTarget(null) // the dialog is an opaque overlay; close it so the error is visible
     }
-    setPickerTarget(null)
   }
 
   return (
     <div className="page">
       <h1>Calendar</h1>
+      {error && <p role="alert">{error}</p>}
       <div>
         <button onClick={() => setWeekStart(addDays(weekStart, -7))}>&larr; Prev week</button>
         <button onClick={() => setWeekStart(addDays(weekStart, 7))}>Next week &rarr;</button>
@@ -92,7 +84,7 @@ export default function Calendar() {
       })}
 
       {pickerTarget && (
-        <div role="dialog">
+        <div role="dialog" aria-modal="true" className="dialog">
           <h2>
             Pick a recipe for {pickerTarget.slot} on {pickerTarget.date}
           </h2>

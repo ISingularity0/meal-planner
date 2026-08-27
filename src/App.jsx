@@ -88,6 +88,7 @@ export default function App() {
             }
           />
           <Route path="/" element={<Navigate to="/calendar" replace />} />
+          <Route path="*" element={<Navigate to="/calendar" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

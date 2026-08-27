@@ -7,13 +7,7 @@ import {
   deleteItem,
   clearList,
 } from '../lib/shoppingList.js'
-
-function toLocalISODate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { toLocalISODate } from '../lib/dates.js'
 
 function todayISO() {
   return toLocalISODate(new Date())
@@ -31,49 +25,77 @@ export default function ShoppingList() {
   const [endDate, setEndDate] = useState(weekAheadISO())
   const [newName, setNewName] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState(null)
 
   async function refresh() {
     setItems(await listItems())
   }
 
   useEffect(() => {
-    refresh()
+    refresh().catch((e) => setError(`Could not load the list: ${e.message}`))
   }, [])
 
   async function handleGenerate() {
     setGenerating(true)
-    await generateFromRange(startDate, endDate)
-    await refresh()
-    setGenerating(false)
+    setError(null)
+    try {
+      await generateFromRange(startDate, endDate)
+      await refresh()
+    } catch (e) {
+      setError(`Could not generate the list: ${e.message}`)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function handleToggle(item) {
-    await toggleChecked(item.id, !item.checked)
-    await refresh()
+    setError(null)
+    try {
+      await toggleChecked(item.id, !item.checked)
+      await refresh()
+    } catch (e) {
+      setError(`Could not update that item: ${e.message}`)
+    }
   }
 
   async function handleDelete(id) {
-    await deleteItem(id)
-    await refresh()
+    setError(null)
+    try {
+      await deleteItem(id)
+      await refresh()
+    } catch (e) {
+      setError(`Could not remove that item: ${e.message}`)
+    }
   }
 
   async function handleAddManual(e) {
     e.preventDefault()
     if (!newName.trim()) return
-    await addManualItem(newName.trim(), null, null)
-    setNewName('')
-    await refresh()
+    setError(null)
+    try {
+      await addManualItem(newName.trim(), null, null)
+      setNewName('')
+      await refresh()
+    } catch (e) {
+      setError(`Could not add that item: ${e.message}`)
+    }
   }
 
   async function handleClear() {
     if (!confirm('Clear the entire shopping list?')) return
-    await clearList()
-    await refresh()
+    setError(null)
+    try {
+      await clearList()
+      await refresh()
+    } catch (e) {
+      setError(`Could not clear the list: ${e.message}`)
+    }
   }
 
   return (
     <div className="page">
       <h1>Shopping list</h1>
+      {error && <p role="alert">{error}</p>}
 
       <div>
         <label>

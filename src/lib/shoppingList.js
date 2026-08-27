@@ -42,7 +42,7 @@ export async function generateFromRange(startDate, endDate) {
     if (existing) {
       const { error } = await supabase
         .from('shopping_list_items')
-        .update({ quantity: (Number(existing.quantity) || 0) + quantity })
+        .update({ quantity: quantity || null })
         .eq('id', existing.id)
       if (error) throw error
     } else {
