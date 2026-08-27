@@ -4,6 +4,7 @@ import RequireAuth from './auth/RequireAuth.jsx'
 import Login from './pages/Login.jsx'
 import RecipeLibrary from './pages/RecipeLibrary.jsx'
 import RecipeForm from './pages/RecipeForm.jsx'
+import RecipeDetail from './pages/RecipeDetail.jsx'
 
 function Placeholder({ label }) {
   return <div className="page">{label} (coming in a later task)</div>
@@ -51,7 +52,7 @@ export default function App() {
             path="/recipes/:id"
             element={
               <RequireAuth>
-                <Placeholder label="Recipe detail" />
+                <RecipeDetail />
               </RequireAuth>
             }
           />
