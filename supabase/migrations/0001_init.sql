@@ -26,6 +26,13 @@ create table if not exists shopping_list_items (
   created_at timestamptz not null default now()
 );
 
+-- Tables created via the SQL Editor don't always inherit Supabase's default role
+-- grants — without this, every query fails with "permission denied for table X"
+-- regardless of RLS, before RLS is even evaluated.
+grant select, insert, update, delete on recipes to authenticated;
+grant select, insert, update, delete on meal_slots to authenticated;
+grant select, insert, update, delete on shopping_list_items to authenticated;
+
 alter table recipes enable row level security;
 alter table meal_slots enable row level security;
 alter table shopping_list_items enable row level security;

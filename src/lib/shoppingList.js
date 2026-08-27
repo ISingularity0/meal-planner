@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js'
-import { getWeekSlots } from './mealSlots.js'
+import { getWeekEntries } from './mealEntries.js'
 
 export async function listItems() {
   const { data, error } = await supabase
@@ -11,16 +11,17 @@ export async function listItems() {
 }
 
 export async function generateFromRange(startDate, endDate) {
-  const slots = await getWeekSlots(startDate, endDate)
+  const entries = await getWeekEntries(startDate, endDate)
   const aggregated = new Map() // key: `${name}_${unit}` -> {name, unit, quantity}
 
-  for (const slot of slots) {
-    const ingredients = slot.recipes?.ingredients ?? []
+  for (const entry of entries) {
+    const ingredients = entry.recipes?.ingredients ?? []
+    const multiplier = Number(entry.servings) || 1
     for (const ing of ingredients) {
       const name = (ing.name ?? '').trim()
       if (!name) continue
       const unit = (ing.unit ?? '').trim()
-      const qty = Number(ing.quantity) || 0
+      const qty = (Number(ing.quantity) || 0) * multiplier
       const key = `${name.toLowerCase()}_${unit.toLowerCase()}`
       const existing = aggregated.get(key)
       if (existing) {
@@ -52,16 +53,8 @@ export async function generateFromRange(startDate, endDate) {
       if (error) throw error
     }
   }
-}
 
-export async function addManualItem(name, quantity, unit) {
-  const { data, error } = await supabase
-    .from('shopping_list_items')
-    .insert({ name, quantity: quantity || null, unit: unit || null, checked: false })
-    .select()
-    .single()
-  if (error) throw error
-  return data
+  return { entriesFound: entries.length, ingredientsAdded: aggregated.size }
 }
 
 export async function toggleChecked(id, checked) {
