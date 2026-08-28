@@ -67,10 +67,27 @@ body::before {
     var(--base);
 }
 
+/* iOS always draws the status bar white under black-translucent, which would be unreadable
+   on this light background — so it gets a soft scrim. Zero height when there is no inset
+   (desktop, browser tabs), so it only ever shows in the installed app. */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(58, 44, 33, 0.42), rgba(58, 44, 33, 0.14) 65%, transparent);
+}
+
 .app-shell {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* The view now extends under the status bar, so content has to be inset itself. */
+  padding-top: env(safe-area-inset-top);
 }
 
 .app-main {
@@ -796,7 +813,8 @@ button:disabled {
 .fab {
   position: fixed;
   right: 18px;
-  bottom: 96px;
+  /* Clears the nav bar (~51px tall + 14px margin) plus the home indicator. */
+  bottom: calc(84px + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;

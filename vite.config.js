@@ -16,8 +16,8 @@ export default defineConfig({
         start_url: '/meal-planner/',
         scope: '/meal-planner/',
         display: 'standalone',
-        background_color: '#f7ecdd',
-        theme_color: '#7c9473',
+        background_color: '#f6ede2',
+        theme_color: '#6f8b5f',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },

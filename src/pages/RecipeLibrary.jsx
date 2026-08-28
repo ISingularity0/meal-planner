@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { listRecipes, deleteTagEverywhere } from '../lib/recipes.js'
@@ -137,14 +138,19 @@ export default function RecipeLibrary() {
         </p>
       )}
 
-      <motion.button
-        className="fab"
-        whileTap={{ scale: 0.92 }}
-        onClick={() => navigate('/recipes/new')}
-        aria-label="Rezept hinzufügen"
-      >
-        <PlusIcon size={24} />
-      </motion.button>
+      {/* Portaled to <body>: inside the page it sits under the transformed transition
+          wrapper, which makes position:fixed resolve against that wrapper, not the viewport. */}
+      {createPortal(
+        <motion.button
+          className="fab"
+          whileTap={{ scale: 0.92 }}
+          onClick={() => navigate('/recipes/new')}
+          aria-label="Rezept hinzufügen"
+        >
+          <PlusIcon size={24} />
+        </motion.button>,
+        document.body
+      )}
     </div>
   )
 }
