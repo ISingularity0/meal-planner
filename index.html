@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Familien-Essensplaner</title>
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- black-translucent puts the web view behind the status bar, so the background field
-         reaches the top edge. Without it iOS reserves that strip and fills it with the
-         manifest background_color. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Deliberately "default", not "black-translucent": the latter moves the web view up to
+         y=0 without growing its height, so the ~60pt shortfall just reappears at the bottom
+         instead. The strip iOS paints above the view is blended away via background_color
+         plus a matching fade at the top of the page background. Bonus: dark status bar text,
+         which black-translucent forces to white and would be unreadable on this palette. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Essensplaner" />
     <link rel="apple-touch-icon" href="/meal-planner/icons/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

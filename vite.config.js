@@ -16,9 +16,9 @@ export default defineConfig({
         start_url: '/meal-planner/',
         scope: '/meal-planner/',
         display: 'standalone',
-        // Must match the bottom fade colour in index.css — iOS paints the strip below the
-        // web view with this, and the two have to meet seamlessly.
-        background_color: '#ead5c6',
+        // Must match the top fade colour in index.css — iOS paints the status bar strip
+        // above the web view with this, and the two have to meet seamlessly.
+        background_color: '#efd9c6',
         theme_color: '#6f8b5f',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },

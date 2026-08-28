@@ -53,11 +53,11 @@ body,
    never scrolls (only .app-main does), so no fixed attachment is needed. */
 html {
   background:
-    /* iOS renders this app's view ~60pt shorter than the screen and fills the remainder
-       with the manifest background_color — a region no CSS can paint. So the page fades
-       into that exact colour at its bottom edge, making the seam invisible. Keep this
-       value and `background_color` in vite.config.js identical. */
-    linear-gradient(to top, rgb(234, 213, 198) 0, rgb(234, 213, 198) 14px, rgba(234, 213, 198, 0) 130px),
+    /* iOS reserves the status bar strip above the web view and fills it with the manifest
+       background_color — a region no CSS can paint. So the page fades out of that exact
+       colour at its top edge, making the seam invisible. Keep this value and
+       `background_color` in vite.config.js identical. */
+    linear-gradient(to bottom, rgb(239, 217, 198) 0, rgb(239, 217, 198) 8px, rgba(239, 217, 198, 0) 110px),
     linear-gradient(180deg, rgba(255, 250, 243, 0.28), rgba(255, 250, 243, 0.12)),
     radial-gradient(circle at 14% -4%, rgba(228, 150, 104, 0.62), transparent 44%),
     radial-gradient(circle at 96% 22%, rgba(240, 196, 130, 0.66), transparent 44%),
@@ -75,21 +75,6 @@ body {
   background: transparent;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
-}
-
-/* iOS always draws the status bar white under black-translucent, which would be unreadable
-   on this light background — so it gets a soft scrim. Zero height when there is no inset
-   (desktop, browser tabs), so it only ever shows in the installed app. */
-body::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-top);
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(58, 44, 33, 0.42), rgba(58, 44, 33, 0.14) 65%, transparent);
 }
 
 .app-shell {
@@ -865,9 +850,8 @@ button:disabled {
 .fab {
   position: fixed;
   right: 18px;
-  /* Clears the nav bar: 12px margin + ~51px height + 16px gap. No safe-area term, for the
-     same reason as the nav itself. */
-  bottom: 79px;
+  /* Clears the nav bar (~51px tall + 14px margin) plus the home indicator. */
+  bottom: calc(84px + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -1257,8 +1241,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   border-radius: 34px 34px 0 0;
-  /* Same reasoning as the nav: the indicator is outside this view, so no inset here. */
-  padding: 10px 16px 16px;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
   background: linear-gradient(165deg, rgba(255, 253, 250, 0.86), rgba(255, 250, 243, 0.6) 42%, rgba(255, 252, 247, 0.74));
   backdrop-filter: blur(44px) saturate(2);
   -webkit-backdrop-filter: blur(44px) saturate(2);
@@ -1517,10 +1500,7 @@ button:disabled {
   flex-shrink: 0;
   display: flex;
   gap: 4px;
-  /* Deliberately no safe-area inset: iOS renders this view ~60pt short, so the home
-     indicator sits in the strip below it, outside our layout. Reserving space for it here
-     too would double-count and leave the bar floating far above the screen edge. */
-  margin: 0 14px 12px;
+  margin: 0 14px calc(14px + env(safe-area-inset-bottom));
   padding: 7px;
   border-radius: 28px;
   /* Sits above page content but below the sheet (z-index 31), which is portaled to body. */
