@@ -39,25 +39,26 @@ html,
 body,
 #root {
   height: 100%;
-  /* iOS standalone sizes the view as "screen minus top inset" but, with a translucent
-     status bar, positions it at y=0 — leaving that same height unpainted at the bottom,
-     outside anything CSS can reach. dvh reports the real dynamic viewport and closes it.
-     The 100% above stays as the fallback for browsers without dvh. */
-  height: 100dvh;
   overflow: hidden;
 }
 
-/* The light field lives on <html> so it propagates to the canvas, which always covers the
-   full screen including the safe areas — a fixed pseudo-element only covers the viewport
-   box and left the home-indicator strip showing the plain base colour. The document itself
-   never scrolls (only .app-main does), so no fixed attachment is needed. */
-html {
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  background: var(--base);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fixed light field. Deliberately a fixed pseudo-element rather than
+   background-attachment:fixed, which is unreliable on iOS Safari. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background:
-    /* iOS reserves the status bar strip above the web view and fills it with the manifest
-       background_color — a region no CSS can paint. So the page fades out of that exact
-       colour at its top edge, making the seam invisible. Keep this value and
-       `background_color` in vite.config.js identical. */
-    linear-gradient(to bottom, rgb(239, 217, 198) 0, rgb(239, 217, 198) 8px, rgba(239, 217, 198, 0) 110px),
     linear-gradient(180deg, rgba(255, 250, 243, 0.28), rgba(255, 250, 243, 0.12)),
     radial-gradient(circle at 14% -4%, rgba(228, 150, 104, 0.62), transparent 44%),
     radial-gradient(circle at 96% 22%, rgba(240, 196, 130, 0.66), transparent 44%),
@@ -66,23 +67,10 @@ html {
     var(--base);
 }
 
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-weight: 500;
-  /* Must stay transparent: a background here would propagate to the canvas and hide the
-     gradient set on <html>. */
-  background: transparent;
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-}
-
 .app-shell {
   height: 100%;
   display: flex;
   flex-direction: column;
-  /* The view now extends under the status bar, so content has to be inset itself. */
-  padding-top: env(safe-area-inset-top);
 }
 
 .app-main {
