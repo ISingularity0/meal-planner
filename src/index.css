@@ -59,6 +59,12 @@ body::before {
   inset: 0;
   z-index: -1;
   background:
+    /* iOS reserves the status bar strip above the web view and fills it with a flat
+       background_color — no CSS can paint a gradient there. So the page starts in exactly
+       that colour and fades out of it over 120px, leaving no visible seam. This value and
+       `background_color` in vite.config.js must stay identical; it is the computed average
+       of the gradient's own top edge (#F2D0B9 left, #F6E3CC right). */
+    linear-gradient(to bottom, rgb(244, 218, 195), rgba(244, 218, 195, 0) 120px),
     linear-gradient(180deg, rgba(255, 250, 243, 0.28), rgba(255, 250, 243, 0.12)),
     radial-gradient(circle at 14% -4%, rgba(228, 150, 104, 0.62), transparent 44%),
     radial-gradient(circle at 96% 22%, rgba(240, 196, 130, 0.66), transparent 44%),
