@@ -1,9 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { getRecipe, createRecipe, updateRecipe, listAllTags } from '../lib/recipes.js'
+import {
+  getRecipe,
+  createRecipe,
+  updateRecipe,
+  listAllTags,
+  listAllIngredientNames,
+} from '../lib/recipes.js'
 
 const emptyIngredient = { name: '', quantity: '', unit: '' }
+
+const UNITS = ['g', 'kg', 'ml', 'l', 'TL', 'EL', 'Stück', 'Prise', 'Msp.', 'Bund', 'Zehe', 'Scheibe', 'Dose', 'Packung', 'Tasse']
+
+// Keeps a unit that isn't in the preset list (typed before this existed) selectable,
+// so editing an old recipe can't silently blank it out.
+function unitOptions(current) {
+  const value = (current ?? '').trim()
+  return value && !UNITS.includes(value) ? [...UNITS, value] : UNITS
+}
 
 export default function RecipeForm() {
   const { id } = useParams()
@@ -19,6 +34,8 @@ export default function RecipeForm() {
   const [nutrition, setNutrition] = useState({ kcal: '', protein: '', fat: '', carbs: '' })
   const [tags, setTags] = useState([])
   const [allTags, setAllTags] = useState([])
+  const [knownIngredients, setKnownIngredients] = useState([])
+  const [focusedIngredient, setFocusedIngredient] = useState(null)
   const [newTag, setNewTag] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null)
@@ -30,7 +47,21 @@ export default function RecipeForm() {
     listAllTags()
       .then(setAllTags)
       .catch(() => {})
+    listAllIngredientNames()
+      .then(setKnownIngredients)
+      .catch(() => {})
   }, [])
+
+  function suggestionsFor(value) {
+    const query = (value ?? '').trim().toLowerCase()
+    if (query.length < 2) return []
+    return knownIngredients
+      .filter((name) => {
+        const lower = name.toLowerCase()
+        return lower.includes(query) && lower !== query
+      })
+      .slice(0, 5)
+  }
 
   useEffect(() => {
     if (!isEdit) return
@@ -268,24 +299,50 @@ export default function RecipeForm() {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
             >
+              <div className="ingredient-name-wrap">
+                <input
+                  placeholder="Zutat"
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  onKeyDown={(e) => handleIngredientKeyDown(e, i)}
+                  onFocus={() => setFocusedIngredient(i)}
+                  onBlur={() => setFocusedIngredient((prev) => (prev === i ? null : prev))}
+                />
+                {focusedIngredient === i && suggestionsFor(ing.name).length > 0 && (
+                  <div className="glass ingredient-suggestions">
+                    {suggestionsFor(ing.name).map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        // Keeps the input from blurring before the click lands.
+                        onPointerDown={(e) => e.preventDefault()}
+                        onClick={() => updateIngredient(i, 'name', name)}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
-                placeholder="Zutat"
-                value={ing.name}
-                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                onKeyDown={(e) => handleIngredientKeyDown(e, i)}
-              />
-              <input
+                className="ingredient-qty"
                 placeholder="Menge"
                 value={ing.quantity}
                 onChange={(e) => updateIngredient(i, 'quantity', e.target.value)}
                 onKeyDown={(e) => handleIngredientKeyDown(e, i)}
               />
-              <input
-                placeholder="Einheit"
-                value={ing.unit}
+              <select
+                className="ingredient-unit"
+                value={ing.unit ?? ''}
                 onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
-                onKeyDown={(e) => handleIngredientKeyDown(e, i)}
-              />
+              >
+                <option value="">Einheit</option>
+                {unitOptions(ing.unit).map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
               <button type="button" className="btn-ghost" onClick={() => removeIngredientRow(i)}>
                 ✕
               </button>

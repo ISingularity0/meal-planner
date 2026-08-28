@@ -1420,17 +1420,47 @@ button:disabled {
   align-items: center;
 }
 
-.ingredient-row input {
+.ingredient-row input,
+.ingredient-row select {
   min-width: 0;
   padding: 10px 11px;
 }
 
-.ingredient-row input:first-child {
+.ingredient-name-wrap {
+  position: relative;
   flex: 2;
+  min-width: 0;
 }
 
-.ingredient-row input:not(:first-child) {
+.ingredient-qty {
   flex: 1;
+}
+
+.ingredient-unit {
+  flex: 1.15;
+}
+
+.ingredient-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border-radius: 14px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ingredient-suggestions button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 14px;
 }
 
 .photo-picker {

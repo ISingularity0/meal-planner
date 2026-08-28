@@ -19,6 +19,22 @@ export async function getRecipe(id) {
   return data
 }
 
+// Distinct ingredient names already in use, for the autocomplete in the recipe form —
+// keeps "Milch" from turning into "milch"/"Vollmilch"/"Milch " across recipes, which would
+// split them into separate shopping list entries.
+export async function listAllIngredientNames() {
+  const { data, error } = await supabase.from('recipes').select('ingredients')
+  if (error) throw error
+  const names = new Set()
+  for (const row of data) {
+    for (const ing of row.ingredients ?? []) {
+      const name = (ing.name ?? '').trim()
+      if (name) names.add(name)
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, 'de'))
+}
+
 export async function listAllTags() {
   const { data, error } = await supabase.from('recipes').select('tags')
   if (error) throw error
