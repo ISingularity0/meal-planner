@@ -39,6 +39,11 @@ html,
 body,
 #root {
   height: 100%;
+  /* iOS standalone sizes the view as "screen minus top inset" but, with a translucent
+     status bar, positions it at y=0 — leaving that same height unpainted at the bottom,
+     outside anything CSS can reach. dvh reports the real dynamic viewport and closes it.
+     The 100% above stays as the fallback for browsers without dvh. */
+  height: 100dvh;
   overflow: hidden;
 }
 
