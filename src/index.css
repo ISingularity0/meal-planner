@@ -42,22 +42,11 @@ body,
   overflow: hidden;
 }
 
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-weight: 500;
-  background: var(--base);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Fixed light field. Deliberately a fixed pseudo-element rather than
-   background-attachment:fixed, which is unreliable on iOS Safari. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
+/* The light field lives on <html> so it propagates to the canvas, which always covers the
+   full screen including the safe areas — a fixed pseudo-element only covers the viewport
+   box and left the home-indicator strip showing the plain base colour. The document itself
+   never scrolls (only .app-main does), so no fixed attachment is needed. */
+html {
   background:
     linear-gradient(180deg, rgba(255, 250, 243, 0.28), rgba(255, 250, 243, 0.12)),
     radial-gradient(circle at 14% -4%, rgba(228, 150, 104, 0.62), transparent 44%),
@@ -65,6 +54,17 @@ body::before {
     radial-gradient(circle at 4% 62%, rgba(150, 182, 136, 0.55), transparent 42%),
     radial-gradient(circle at 78% 100%, rgba(214, 128, 96, 0.5), transparent 46%),
     var(--base);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  /* Must stay transparent: a background here would propagate to the canvas and hide the
+     gradient set on <html>. */
+  background: transparent;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* iOS always draws the status bar white under black-translucent, which would be unreadable
