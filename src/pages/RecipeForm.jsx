@@ -16,6 +16,7 @@ export default function RecipeForm() {
   const [nextKey, setNextKey] = useState(1)
   const [steps, setSteps] = useState('')
   const [prepMinutes, setPrepMinutes] = useState('')
+  const [nutrition, setNutrition] = useState({ kcal: '', protein: '', fat: '', carbs: '' })
   const [tags, setTags] = useState([])
   const [allTags, setAllTags] = useState([])
   const [newTag, setNewTag] = useState('')
@@ -41,6 +42,12 @@ export default function RecipeForm() {
         setNextKey(loaded.length)
         setSteps(r.steps)
         setPrepMinutes(r.prep_minutes ?? '')
+        setNutrition({
+          kcal: r.kcal ?? '',
+          protein: r.protein_g ?? '',
+          fat: r.fat_g ?? '',
+          carbs: r.carbs_g ?? '',
+        })
         setTags(r.tags ?? [])
         setExistingPhotoUrl(r.photo_url)
       })
@@ -107,6 +114,7 @@ export default function RecipeForm() {
         tags,
         photoFile,
         prepMinutes: prepMinutes === '' ? null : Number(prepMinutes),
+        nutrition,
       }
       const saved = isEdit ? await updateRecipe(id, payload) : await createRecipe(payload)
       // replace: the form must not stay in history, otherwise "back" from the detail
@@ -155,6 +163,31 @@ export default function RecipeForm() {
               onChange={(e) => setPrepMinutes(e.target.value)}
             />
           </label>
+        </div>
+
+        <h2>Nährwerte pro Portion</h2>
+        <div className="nutrition-fields">
+          {[
+            { key: 'kcal', label: 'kcal', placeholder: 'z. B. 520' },
+            { key: 'protein', label: 'Eiweiß (g)', placeholder: 'z. B. 32' },
+            { key: 'fat', label: 'Fett (g)', placeholder: 'z. B. 18' },
+            { key: 'carbs', label: 'Kohlenhydrate (g)', placeholder: 'z. B. 45' },
+          ].map((field) => (
+            <label key={field.key}>
+              {field.label}
+              <input
+                type="number"
+                min="0"
+                step="any"
+                inputMode="decimal"
+                placeholder={field.placeholder}
+                value={nutrition[field.key]}
+                onChange={(e) =>
+                  setNutrition((prev) => ({ ...prev, [field.key]: e.target.value }))
+                }
+              />
+            </label>
+          ))}
         </div>
 
         <h2>Foto</h2>

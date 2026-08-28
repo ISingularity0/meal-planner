@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { getRecipe, deleteRecipe } from '../lib/recipes.js'
 import Stepper from '../components/Stepper.jsx'
 import OverflowMenu from '../components/OverflowMenu.jsx'
+import NutritionBar from '../components/NutritionBar.jsx'
 
 function scaleQuantity(quantity, factor) {
   const num = Number(quantity)
@@ -41,6 +42,8 @@ export default function RecipeDetail() {
   if (error && !recipe) return <div className="page"><p role="alert">{error}</p></div>
   if (!recipe) return <div className="page"><p className="empty-state">Lädt…</p></div>
 
+  const hasNutrition =
+    recipe.kcal != null || recipe.protein_g != null || recipe.fat_g != null || recipe.carbs_g != null
   const stepLines = recipe.steps.split('\n').filter((line) => line.trim() !== '')
   const meta = [
     recipe.prep_minutes ? `${recipe.prep_minutes} Min` : null,
@@ -51,7 +54,16 @@ export default function RecipeDetail() {
     .join(' · ')
 
   return (
-    <div className="page">
+    // Horizontal swipe flips between the two tabs. No conflict with the app-level tab
+    // swipe: that one only runs on the three main routes.
+    <motion.div
+      className="page"
+      onPanEnd={(_, info) => {
+        const { x, y } = info.offset
+        if (Math.abs(x) < 60 || Math.abs(x) < Math.abs(y) * 1.5) return
+        setTab(x < 0 ? 'steps' : 'ingredients')
+      }}
+    >
       <div className="detail-head">
         <button className="glass icon-btn" onClick={() => navigate('/recipes')} aria-label="Zurück">
           ‹
@@ -97,6 +109,18 @@ export default function RecipeDetail() {
         <Stepper size="lg" value={portions} onChange={setPortions} />
       </div>
 
+      {/* Not scaled by portions: that stepper is about how much to cook, while the useful
+          nutrition figure is what one person eats. Matches the calendar's day total. */}
+      {hasNutrition && (
+        <NutritionBar
+          label="Pro Portion"
+          kcal={recipe.kcal}
+          protein={recipe.protein_g}
+          fat={recipe.fat_g}
+          carbs={recipe.carbs_g}
+        />
+      )}
+
       <div className="glass seg-tabs">
         <button
           className={tab === 'ingredients' ? 'seg-tab active' : 'seg-tab'}
@@ -120,10 +144,10 @@ export default function RecipeDetail() {
           <motion.ul
             key="ingredients"
             className="ingredient-list"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, x: -18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -18 }}
+            transition={{ duration: 0.16 }}
           >
             {recipe.ingredients.map((ing, i) => (
               <li key={i}>
@@ -139,10 +163,10 @@ export default function RecipeDetail() {
           <motion.ol
             key="steps"
             className="steps-list"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 18 }}
+            transition={{ duration: 0.16 }}
           >
             {stepLines.map((line, i) => (
               <li key={i}>{line}</li>
@@ -151,7 +175,6 @@ export default function RecipeDetail() {
           </motion.ol>
         )}
       </AnimatePresence>
-
-    </div>
+    </motion.div>
   )
 }

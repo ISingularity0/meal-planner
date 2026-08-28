@@ -13,6 +13,7 @@ import { listRecipes } from '../lib/recipes.js'
 import { toLocalISODate as toISODate, startOfWeek, addDays } from '../lib/dates.js'
 import Stepper from '../components/Stepper.jsx'
 import PlusIcon from '../components/PlusIcon.jsx'
+import NutritionBar from '../components/NutritionBar.jsx'
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
@@ -121,6 +122,27 @@ export default function Calendar() {
     return [...set].sort((a, b) => a.localeCompare(b, 'de'))
   }, [recipes])
 
+  // Counted at one portion per dish, deliberately ignoring `servings`: that multiplier says
+  // how much gets cooked, not how much one person eats. Cooking a dish x3 for the family
+  // still means one portion each.
+  // Null when no recipe of the day carries nutrition data, so the bar stays hidden
+  // instead of showing a row of zeros.
+  const dayNutrition = useMemo(() => {
+    const total = { kcal: 0, protein: 0, fat: 0, carbs: 0 }
+    let any = false
+    for (const entry of entries) {
+      const r = entry.recipes
+      if (!r) continue
+      if (r.kcal == null && r.protein_g == null && r.fat_g == null && r.carbs_g == null) continue
+      any = true
+      total.kcal += Number(r.kcal) || 0
+      total.protein += Number(r.protein_g) || 0
+      total.fat += Number(r.fat_g) || 0
+      total.carbs += Number(r.carbs_g) || 0
+    }
+    return any ? total : null
+  }, [entries])
+
   const pickerResults = recipes.filter((r) => {
     const q = pickerQuery.toLowerCase()
     const matchesQuery =
@@ -180,6 +202,16 @@ export default function Calendar() {
           {entries.length === 1 ? '1 Gericht' : `${entries.length} Gerichte`}
         </span>
       </div>
+
+      {dayNutrition && (
+        <NutritionBar
+          label="Tagessumme pro Person"
+          kcal={dayNutrition.kcal}
+          protein={dayNutrition.protein}
+          fat={dayNutrition.fat}
+          carbs={dayNutrition.carbs}
+        />
+      )}
 
       {entries.length === 0 && <p className="empty-state">Noch nichts geplant.</p>}
 
@@ -310,7 +342,13 @@ export default function Calendar() {
 
                 <div className="sheet-body">
                   {pickerResults.map((r) => (
-                    <div key={r.id} className="glass picker-row">
+                    <motion.button
+                      key={r.id}
+                      className="glass picker-row"
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => quickAdd(r)}
+                      aria-label={`${r.title} hinzufügen`}
+                    >
                       <span className="picker-thumb">
                         {r.photo_url ? <img src={r.photo_url} alt="" /> : '🍽️'}
                       </span>
@@ -318,15 +356,11 @@ export default function Calendar() {
                         <span className="picker-title">{r.title}</span>
                         <span className="subline">{(r.ingredients ?? []).length} Zutaten</span>
                       </span>
-                      <motion.button
-                        className="picker-add"
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => quickAdd(r)}
-                        aria-label={`${r.title} hinzufügen`}
-                      >
+                      {/* Decorative: the whole row is the button, so this must not be one too. */}
+                      <span className="picker-add" aria-hidden="true">
                         <PlusIcon size={15} />
-                      </motion.button>
-                    </div>
+                      </span>
+                    </motion.button>
                   ))}
                   {pickerResults.length === 0 && (
                     <p className="empty-state">Keine Rezepte gefunden.</p>

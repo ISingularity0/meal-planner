@@ -581,6 +581,48 @@ button:disabled {
   color: var(--ink-2);
 }
 
+.nutrition-bar {
+  border-radius: 21px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.nutrition-caption {
+  display: block;
+  text-align: center;
+  margin-bottom: 9px;
+}
+
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.nutrition-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nutrition-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.nutrition-label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
 .entry-list {
   display: flex;
   flex-direction: column;
@@ -1279,6 +1321,9 @@ button:disabled {
   gap: 10px;
   border-radius: 18px;
   padding: 8px;
+  /* It's a <button> now, so the button defaults for width and alignment need resetting. */
+  width: 100%;
+  text-align: left;
 }
 
 .picker-row > * {
@@ -1325,15 +1370,11 @@ button:disabled {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  padding: 0;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
-  font-weight: 700;
   background: var(--accent-surface);
-  border-color: transparent;
   color: var(--on-accent);
   box-shadow: var(--accent-shadow);
 }
@@ -1361,6 +1402,16 @@ button:disabled {
 }
 
 /* Recipe form */
+
+.nutrition-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.nutrition-fields input {
+  padding: 10px 12px;
+}
 
 .ingredient-row {
   display: flex;

@@ -46,7 +46,15 @@ async function uploadPhoto(photoFile) {
   return data.publicUrl
 }
 
-export async function createRecipe({ title, ingredients, steps, photoFile, tags, prepMinutes }) {
+export async function createRecipe({
+  title,
+  ingredients,
+  steps,
+  photoFile,
+  tags,
+  prepMinutes,
+  nutrition,
+}) {
   const photo_url = photoFile ? await uploadPhoto(photoFile) : null
   const { data, error } = await supabase
     .from('recipes')
@@ -57,6 +65,7 @@ export async function createRecipe({ title, ingredients, steps, photoFile, tags,
       photo_url,
       tags: tags ?? [],
       prep_minutes: prepMinutes || null,
+      ...nutritionColumns(nutrition),
     })
     .select()
     .single()
@@ -64,8 +73,28 @@ export async function createRecipe({ title, ingredients, steps, photoFile, tags,
   return data
 }
 
-export async function updateRecipe(id, { title, ingredients, steps, photoFile, tags, prepMinutes }) {
-  const update = { title, ingredients, steps, tags: tags ?? [], prep_minutes: prepMinutes || null }
+function nutritionColumns(nutrition = {}) {
+  const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
+  return {
+    kcal: num(nutrition.kcal),
+    protein_g: num(nutrition.protein),
+    fat_g: num(nutrition.fat),
+    carbs_g: num(nutrition.carbs),
+  }
+}
+
+export async function updateRecipe(
+  id,
+  { title, ingredients, steps, photoFile, tags, prepMinutes, nutrition }
+) {
+  const update = {
+    title,
+    ingredients,
+    steps,
+    tags: tags ?? [],
+    prep_minutes: prepMinutes || null,
+    ...nutritionColumns(nutrition),
+  }
   if (photoFile) {
     update.photo_url = await uploadPhoto(photoFile)
   }
