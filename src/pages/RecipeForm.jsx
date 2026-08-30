@@ -9,6 +9,7 @@ import {
   listAllIngredientNames,
 } from '../lib/recipes.js'
 import ProductSheet from '../components/ProductSheet.jsx'
+import IngredientSheet from '../components/IngredientSheet.jsx'
 import NutritionBar from '../components/NutritionBar.jsx'
 import { listProducts } from '../lib/products.js'
 import { UNITS, computeNutrition } from '../lib/nutrition.js'
@@ -40,6 +41,7 @@ export default function RecipeForm() {
   const [knownIngredients, setKnownIngredients] = useState([])
   const [focusedIngredient, setFocusedIngredient] = useState(null)
   const [scanOpen, setScanOpen] = useState(false)
+  const [ingredientSheetOpen, setIngredientSheetOpen] = useState(false)
   const [products, setProducts] = useState([])
   const [productsLoaded, setProductsLoaded] = useState(false)
   const [recipeLoaded, setRecipeLoaded] = useState(!isEdit)
@@ -158,6 +160,23 @@ export default function RecipeForm() {
   function addIngredientRow() {
     setIngredients((prev) => [...prev, { ...emptyIngredient, key: nextKey }])
     setNextKey((k) => k + 1)
+  }
+
+  // Shared by both sheets: a picked product becomes an ingredient line, and the local
+  // product list is kept in sync so the nutrition maths sees it immediately.
+  function addProductAsIngredient(product, { quantity, unit }) {
+    setProducts((prev) =>
+      prev.some((p) => p.id === product.id)
+        ? prev.map((p) => (p.id === product.id ? product : p))
+        : [...prev, product]
+    )
+    setIngredients((prev) => [
+      ...prev,
+      { name: product.name, quantity, unit, product_id: product.id, key: nextKey },
+    ])
+    setNextKey((k) => k + 1)
+    setScanOpen(false)
+    setIngredientSheetOpen(false)
   }
 
   function removeIngredientRow(index) {
@@ -437,30 +456,25 @@ export default function RecipeForm() {
           ))}
         </AnimatePresence>
         <div className="row">
-          <button type="button" className="btn-block" onClick={addIngredientRow}>
+          <button type="button" className="btn-block" onClick={() => setIngredientSheetOpen(true)}>
             + Zutat hinzufügen
           </button>
           <button type="button" className="btn-block" onClick={() => setScanOpen(true)}>
-            Produkt scannen
+            Neues Produkt
           </button>
         </div>
 
         <AnimatePresence>
           {scanOpen && (
-            <ProductSheet
-              onClose={() => setScanOpen(false)}
-              onAdd={(product, { quantity, unit }) => {
-                setProducts((prev) =>
-                  prev.some((p) => p.id === product.id)
-                    ? prev.map((p) => (p.id === product.id ? product : p))
-                    : [...prev, product]
-                )
-                setIngredients((prev) => [
-                  ...prev,
-                  { name: product.name, quantity, unit, product_id: product.id, key: nextKey },
-                ])
-                setNextKey((k) => k + 1)
-                setScanOpen(false)
+            <ProductSheet onClose={() => setScanOpen(false)} onAdd={addProductAsIngredient} />
+          )}
+          {ingredientSheetOpen && (
+            <IngredientSheet
+              onClose={() => setIngredientSheetOpen(false)}
+              onAdd={addProductAsIngredient}
+              onAddFreeText={() => {
+                addIngredientRow()
+                setIngredientSheetOpen(false)
               }}
             />
           )}

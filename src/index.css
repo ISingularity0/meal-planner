@@ -1301,7 +1301,13 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 4px;
+  /* Room below the last element — with only 4px the submit button sat flush against the
+     bottom edge of the sheet. */
+  padding-bottom: 28px;
+}
+
+.free-text-btn {
+  margin-top: 8px;
 }
 
 .picker-row {
