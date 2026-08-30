@@ -41,8 +41,13 @@ export default function RecipeForm() {
   const [focusedIngredient, setFocusedIngredient] = useState(null)
   const [scanOpen, setScanOpen] = useState(false)
   const [products, setProducts] = useState([])
-  // Once nutrition is edited by hand, the computed values stop overwriting it.
-  const [nutritionTouched, setNutritionTouched] = useState(false)
+  const [productsLoaded, setProductsLoaded] = useState(false)
+  const [recipeLoaded, setRecipeLoaded] = useState(!isEdit)
+  // 'auto'      — nutrition follows the ingredients, in both directions.
+  // 'manual'    — typed by hand, left alone.
+  // 'undecided' — editing an existing recipe, waiting for products to load so we can tell
+  //               whether the stored values came from a calculation or were typed.
+  const [nutritionMode, setNutritionMode] = useState(isEdit ? 'undecided' : 'auto')
   const [newTag, setNewTag] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null)
@@ -60,6 +65,7 @@ export default function RecipeForm() {
     listProducts()
       .then(setProducts)
       .catch(() => {})
+      .finally(() => setProductsLoaded(true))
   }, [])
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
@@ -68,16 +74,36 @@ export default function RecipeForm() {
     [ingredients, productsById]
   )
 
-  // Auto-fill from the ingredients unless the fields were edited by hand.
+  // For an existing recipe there is no stored flag saying whether its numbers were
+  // calculated or typed — so compare them against what the ingredients produce. Matching
+  // values mean it was a calculation and may keep updating; differing values were typed
+  // and must be left alone.
   useEffect(() => {
-    if (nutritionTouched || computed.counted === 0) return
-    setNutrition({
-      kcal: String(Math.round(computed.kcal)),
-      protein: String(Math.round(computed.protein)),
-      fat: String(Math.round(computed.fat)),
-      carbs: String(Math.round(computed.carbs)),
-    })
-  }, [computed, nutritionTouched])
+    if (nutritionMode !== 'undecided' || !productsLoaded || !recipeLoaded) return
+    const matches =
+      computed.counted > 0 &&
+      ['kcal', 'protein', 'fat', 'carbs'].every((key) => {
+        const stored = Number(nutrition[key])
+        return Number.isFinite(stored) && Math.abs(stored - computed[key]) <= 1
+      })
+    setNutritionMode(matches ? 'auto' : 'manual')
+  }, [nutritionMode, productsLoaded, recipeLoaded, computed, nutrition])
+
+  // In auto mode the fields track the ingredients — including back down to empty when the
+  // last ingredient carrying product data is removed.
+  useEffect(() => {
+    if (nutritionMode !== 'auto') return
+    setNutrition(
+      computed.counted === 0
+        ? { kcal: '', protein: '', fat: '', carbs: '' }
+        : {
+            kcal: String(Math.round(computed.kcal)),
+            protein: String(Math.round(computed.protein)),
+            fat: String(Math.round(computed.fat)),
+            carbs: String(Math.round(computed.carbs)),
+          }
+    )
+  }, [computed, nutritionMode])
 
   function suggestionsFor(value) {
     const query = (value ?? '').trim().toLowerCase()
@@ -106,9 +132,7 @@ export default function RecipeForm() {
           fat: r.fat_g ?? '',
           carbs: r.carbs_g ?? '',
         })
-        // Saved values win over recomputation, so an existing recipe's numbers can't be
-        // silently replaced just by opening it for editing.
-        if (r.kcal != null) setNutritionTouched(true)
+        setRecipeLoaded(true)
         setTags(r.tags ?? [])
         setExistingPhotoUrl(r.photo_url)
       })
@@ -245,24 +269,14 @@ export default function RecipeForm() {
             />
             <div className="row" style={{ marginBottom: 12 }}>
               <span className="subline" style={{ flex: 1 }}>
+                {nutritionMode === 'manual' && 'Felder von Hand gesetzt. '}
                 {computed.skipped > 0
                   ? `${computed.skipped} Zutat${computed.skipped === 1 ? '' : 'en'} ohne Produktdaten oder Menge — nicht enthalten.`
                   : 'Alle Zutaten enthalten.'}
               </span>
-              {nutritionTouched && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNutritionTouched(false)
-                    setNutrition({
-                      kcal: String(Math.round(computed.kcal)),
-                      protein: String(Math.round(computed.protein)),
-                      fat: String(Math.round(computed.fat)),
-                      carbs: String(Math.round(computed.carbs)),
-                    })
-                  }}
-                >
-                  Übernehmen
+              {nutritionMode === 'manual' && (
+                <button type="button" onClick={() => setNutritionMode('auto')}>
+                  Automatisch
                 </button>
               )}
             </div>
@@ -286,7 +300,7 @@ export default function RecipeForm() {
                 placeholder={field.placeholder}
                 value={nutrition[field.key]}
                 onChange={(e) => {
-                  setNutritionTouched(true)
+                  setNutritionMode('manual')
                   setNutrition((prev) => ({ ...prev, [field.key]: e.target.value }))
                 }}
               />

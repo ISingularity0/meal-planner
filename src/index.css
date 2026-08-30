@@ -1586,10 +1586,6 @@ button:disabled {
   }
 }
 
-.seg-tabs-3 {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-
 .own-form {
   margin-top: 20px;
   padding-top: 16px;

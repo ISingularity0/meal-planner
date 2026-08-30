@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import BarcodeScanner from './BarcodeScanner.jsx'
 import { getOrFetchByBarcode, listProducts, saveProduct, updateProduct } from '../lib/products.js'
-import { searchProducts } from '../lib/openFoodFacts.js'
 import { UNITS, unitNeedsPieceWeight } from '../lib/nutrition.js'
 
 const EMPTY_DRAFT = {
@@ -26,9 +25,6 @@ function nutritionLine(p) {
 export default function ProductSheet({ onClose, onAdd }) {
   const [tab, setTab] = useState('own')
   const [own, setOwn] = useState([])
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [searching, setSearching] = useState(false)
   const [draft, setDraft] = useState(EMPTY_DRAFT)
   const [chosen, setChosen] = useState(null) // product row, once picked
   const [amount, setAmount] = useState('')
@@ -62,37 +58,6 @@ export default function ProductSheet({ onClose, onAdd }) {
       setBusy(false)
     }
   }, [])
-
-  async function runSearch(e) {
-    e?.preventDefault()
-    if (!query.trim()) return
-    setSearching(true)
-    setError(null)
-    try {
-      setResults(await searchProducts(query.trim()))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  // Search hits come straight from Open Food Facts and aren't in our database yet.
-  async function chooseFromSearch(product) {
-    setBusy(true)
-    setError(null)
-    try {
-      const stored = product.barcode
-        ? (await getOrFetchByBarcode(product.barcode))?.product ?? (await saveProduct(product))
-        : await saveProduct(product)
-      setChosen(stored)
-      setOwn((prev) => (prev.some((p) => p.id === stored.id) ? prev : [...prev, stored]))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function createOwn(e) {
     e.preventDefault()
@@ -225,11 +190,10 @@ export default function ProductSheet({ onClose, onAdd }) {
           </div>
         ) : (
           <>
-            <div className="glass seg-tabs seg-tabs-3">
+            <div className="glass seg-tabs">
               {[
                 { key: 'own', label: 'Gespeichert' },
                 { key: 'scan', label: 'Scannen' },
-                { key: 'search', label: 'Suchen' },
               ].map((t) => (
                 <button
                   key={t.key}
@@ -253,38 +217,6 @@ export default function ProductSheet({ onClose, onAdd }) {
                 <>
                   <BarcodeScanner onDetected={handleDetected} onError={setError} />
                   {busy && <p className="empty-state">Wird nachgeschlagen…</p>}
-                </>
-              )}
-
-              {tab === 'search' && (
-                <>
-                  <form onSubmit={runSearch} className="row">
-                    <input
-                      type="search"
-                      placeholder="z. B. Ei, Mehl, Milch"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
-                    <button type="submit">Suchen</button>
-                  </form>
-                  {searching && <p className="empty-state">Wird gesucht…</p>}
-                  {results.map((p, i) => (
-                    <button
-                      key={`${p.barcode ?? 'x'}-${i}`}
-                      className="glass picker-row"
-                      onClick={() => chooseFromSearch(p)}
-                      disabled={busy}
-                    >
-                      <span className="picker-body">
-                        <span className="picker-title">{p.name}</span>
-                        {p.brand && <span className="subline">{p.brand}</span>}
-                        <span className="subline">{nutritionLine(p)}</span>
-                      </span>
-                    </button>
-                  ))}
-                  {!searching && results.length === 0 && query && (
-                    <p className="empty-state">Nichts gefunden. Leg es unter „Gespeichert" selbst an.</p>
-                  )}
                 </>
               )}
 

@@ -36,12 +36,3 @@ export async function fetchProductByBarcode(barcode) {
   return toProduct(data.product)
 }
 
-export async function searchProducts(query, limit = 20) {
-  const url =
-    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}` +
-    `&search_simple=1&action=process&json=1&page_size=${limit}&fields=${FIELDS}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Suche fehlgeschlagen (${res.status})`)
-  const data = await res.json()
-  return (data.products ?? []).map(toProduct).filter(Boolean)
-}
