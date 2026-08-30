@@ -8,6 +8,7 @@ import {
   listAllTags,
   listAllIngredientNames,
 } from '../lib/recipes.js'
+import ProductScanSheet from '../components/ProductScanSheet.jsx'
 
 const emptyIngredient = { name: '', quantity: '', unit: '' }
 
@@ -36,6 +37,7 @@ export default function RecipeForm() {
   const [allTags, setAllTags] = useState([])
   const [knownIngredients, setKnownIngredients] = useState([])
   const [focusedIngredient, setFocusedIngredient] = useState(null)
+  const [scanOpen, setScanOpen] = useState(false)
   const [newTag, setNewTag] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null)
@@ -349,9 +351,32 @@ export default function RecipeForm() {
             </motion.div>
           ))}
         </AnimatePresence>
-        <button type="button" className="btn-block" onClick={addIngredientRow}>
-          + Zutat hinzufügen
-        </button>
+        <div className="row">
+          <button type="button" className="btn-block" onClick={addIngredientRow}>
+            + Zutat hinzufügen
+          </button>
+          <button type="button" className="btn-block" onClick={() => setScanOpen(true)}>
+            Barcode scannen
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {scanOpen && (
+            <ProductScanSheet
+              onClose={() => setScanOpen(false)}
+              onPick={(product) => {
+                // Spike stage: only the name is taken over. Product storage and the
+                // nutrition maths come next, once the camera is confirmed working.
+                setIngredients((prev) => [
+                  ...prev,
+                  { ...emptyIngredient, name: product.name, key: nextKey },
+                ])
+                setNextKey((k) => k + 1)
+                setScanOpen(false)
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         <h2>Zubereitung</h2>
         <textarea
