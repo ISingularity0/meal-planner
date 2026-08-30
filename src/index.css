@@ -1397,7 +1397,8 @@ button:disabled {
 .scanner {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  /* Square rather than 4:3 — a portrait-held phone gets more usable height for aiming. */
+  aspect-ratio: 1;
   border-radius: 20px;
   overflow: hidden;
   background: rgba(58, 44, 33, 0.85);
@@ -1413,13 +1414,14 @@ button:disabled {
   display: block;
 }
 
-/* Aiming guide: a bright band the barcode gets lined up with. */
+/* Aiming guide. Roughly 2.4:1 inside the square view, close to a barcode's own proportions
+   with room to spare — the previous 80%-of-4:3 band worked out to about 4.4:1. */
 .scanner-frame {
   position: absolute;
-  left: 10%;
-  right: 10%;
+  left: 8%;
+  right: 8%;
   top: 50%;
-  height: 24%;
+  height: 34%;
   transform: translateY(-50%);
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 12px;
