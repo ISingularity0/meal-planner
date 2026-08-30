@@ -82,9 +82,17 @@ export default function RecipeForm() {
   // and must be left alone.
   useEffect(() => {
     if (nutritionMode !== 'undecided' || !productsLoaded || !recipeLoaded) return
+
+    const keys = ['kcal', 'protein', 'fat', 'carbs']
+    // Nothing stored means there is nothing to protect — stay automatic, otherwise adding
+    // the first product to such a recipe would silently do nothing.
+    if (keys.every((key) => nutrition[key] === '' || nutrition[key] == null)) {
+      setNutritionMode('auto')
+      return
+    }
     const matches =
       computed.counted > 0 &&
-      ['kcal', 'protein', 'fat', 'carbs'].every((key) => {
+      keys.every((key) => {
         const stored = Number(nutrition[key])
         return Number.isFinite(stored) && Math.abs(stored - computed[key]) <= 1
       })
