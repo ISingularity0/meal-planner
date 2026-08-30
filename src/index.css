@@ -1585,3 +1585,17 @@ button:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+.seg-tabs-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.own-form {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+}
+
+.own-form h2 {
+  margin-top: 0;
+}

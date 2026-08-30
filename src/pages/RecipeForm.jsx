@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -8,11 +8,13 @@ import {
   listAllTags,
   listAllIngredientNames,
 } from '../lib/recipes.js'
-import ProductScanSheet from '../components/ProductScanSheet.jsx'
+import ProductSheet from '../components/ProductSheet.jsx'
+import NutritionBar from '../components/NutritionBar.jsx'
+import { listProducts } from '../lib/products.js'
+import { UNITS, computeNutrition } from '../lib/nutrition.js'
 
 const emptyIngredient = { name: '', quantity: '', unit: '' }
 
-const UNITS = ['g', 'kg', 'ml', 'l', 'TL', 'EL', 'Stück', 'Prise', 'Msp.', 'Bund', 'Zehe', 'Scheibe', 'Dose', 'Packung', 'Tasse']
 
 // Keeps a unit that isn't in the preset list (typed before this existed) selectable,
 // so editing an old recipe can't silently blank it out.
@@ -38,6 +40,9 @@ export default function RecipeForm() {
   const [knownIngredients, setKnownIngredients] = useState([])
   const [focusedIngredient, setFocusedIngredient] = useState(null)
   const [scanOpen, setScanOpen] = useState(false)
+  const [products, setProducts] = useState([])
+  // Once nutrition is edited by hand, the computed values stop overwriting it.
+  const [nutritionTouched, setNutritionTouched] = useState(false)
   const [newTag, setNewTag] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null)
@@ -52,7 +57,27 @@ export default function RecipeForm() {
     listAllIngredientNames()
       .then(setKnownIngredients)
       .catch(() => {})
+    listProducts()
+      .then(setProducts)
+      .catch(() => {})
   }, [])
+
+  const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products])
+  const computed = useMemo(
+    () => computeNutrition(ingredients, productsById),
+    [ingredients, productsById]
+  )
+
+  // Auto-fill from the ingredients unless the fields were edited by hand.
+  useEffect(() => {
+    if (nutritionTouched || computed.counted === 0) return
+    setNutrition({
+      kcal: String(Math.round(computed.kcal)),
+      protein: String(Math.round(computed.protein)),
+      fat: String(Math.round(computed.fat)),
+      carbs: String(Math.round(computed.carbs)),
+    })
+  }, [computed, nutritionTouched])
 
   function suggestionsFor(value) {
     const query = (value ?? '').trim().toLowerCase()
@@ -81,6 +106,9 @@ export default function RecipeForm() {
           fat: r.fat_g ?? '',
           carbs: r.carbs_g ?? '',
         })
+        // Saved values win over recomputation, so an existing recipe's numbers can't be
+        // silently replaced just by opening it for editing.
+        if (r.kcal != null) setNutritionTouched(true)
         setTags(r.tags ?? [])
         setExistingPhotoUrl(r.photo_url)
       })
@@ -139,7 +167,13 @@ export default function RecipeForm() {
     try {
       const cleanIngredients = ingredients
         .filter((ing) => ing.name.trim() !== '')
-        .map(({ name, quantity, unit }) => ({ name, quantity, unit }))
+        // product_id must survive: it is what links the line to its nutrition data.
+        .map(({ name, quantity, unit, product_id }) => ({
+          name,
+          quantity,
+          unit,
+          ...(product_id ? { product_id } : {}),
+        }))
       const payload = {
         title,
         ingredients: cleanIngredients,
@@ -199,6 +233,42 @@ export default function RecipeForm() {
         </div>
 
         <h2>Nährwerte pro Portion</h2>
+
+        {computed.counted > 0 && (
+          <>
+            <NutritionBar
+              label={`Aus ${computed.counted} Zutat${computed.counted === 1 ? '' : 'en'} berechnet`}
+              kcal={computed.kcal}
+              protein={computed.protein}
+              fat={computed.fat}
+              carbs={computed.carbs}
+            />
+            <div className="row" style={{ marginBottom: 12 }}>
+              <span className="subline" style={{ flex: 1 }}>
+                {computed.skipped > 0
+                  ? `${computed.skipped} Zutat${computed.skipped === 1 ? '' : 'en'} ohne Produktdaten oder Menge — nicht enthalten.`
+                  : 'Alle Zutaten enthalten.'}
+              </span>
+              {nutritionTouched && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNutritionTouched(false)
+                    setNutrition({
+                      kcal: String(Math.round(computed.kcal)),
+                      protein: String(Math.round(computed.protein)),
+                      fat: String(Math.round(computed.fat)),
+                      carbs: String(Math.round(computed.carbs)),
+                    })
+                  }}
+                >
+                  Übernehmen
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
         <div className="nutrition-fields">
           {[
             { key: 'kcal', label: 'kcal', placeholder: 'z. B. 520' },
@@ -215,9 +285,10 @@ export default function RecipeForm() {
                 inputMode="decimal"
                 placeholder={field.placeholder}
                 value={nutrition[field.key]}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setNutritionTouched(true)
                   setNutrition((prev) => ({ ...prev, [field.key]: e.target.value }))
-                }
+                }}
               />
             </label>
           ))}
@@ -356,20 +427,23 @@ export default function RecipeForm() {
             + Zutat hinzufügen
           </button>
           <button type="button" className="btn-block" onClick={() => setScanOpen(true)}>
-            Barcode scannen
+            Produkt scannen
           </button>
         </div>
 
         <AnimatePresence>
           {scanOpen && (
-            <ProductScanSheet
+            <ProductSheet
               onClose={() => setScanOpen(false)}
-              onPick={(product) => {
-                // Spike stage: only the name is taken over. Product storage and the
-                // nutrition maths come next, once the camera is confirmed working.
+              onAdd={(product, { quantity, unit }) => {
+                setProducts((prev) =>
+                  prev.some((p) => p.id === product.id)
+                    ? prev.map((p) => (p.id === product.id ? product : p))
+                    : [...prev, product]
+                )
                 setIngredients((prev) => [
                   ...prev,
-                  { ...emptyIngredient, name: product.name, key: nextKey },
+                  { name: product.name, quantity, unit, product_id: product.id, key: nextKey },
                 ])
                 setNextKey((k) => k + 1)
                 setScanOpen(false)
